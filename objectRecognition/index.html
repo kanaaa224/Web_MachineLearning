@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <!-- <meta http-equiv="Cache-Control" content="no-cache"> -->
+        <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+        <meta name="theme-color" content="#333">
+        <title>物体識別</title>
+
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+        <script src="https://unpkg.com/ml5@1.2.0/dist/ml5.min.js"></script>
+
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+
+                overflow: hidden;
+
+                font-family: sans-serif;
+
+                background-color: #333;
+
+                -webkit-user-select: none;
+                   -moz-user-select: none;
+                        user-select: none;
+            }
+
+            main {
+                .container {
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+
+                    padding: 2rem;
+
+                    background-color: #333;
+                    color: #fff;
+
+                    display: flex;
+                    flex-direction: column;
+
+                    p {
+                        margin: 0;
+                        font-size: 1rem;
+                    }
+
+                    .preview, .results {
+                        margin: 1rem 0 0 0;
+                    }
+                }
+            }
+
+            footer {
+                .container {
+                    position: fixed;
+                    bottom: 0;
+
+                    width: 100%;
+
+                    padding: 0 0 1rem 0;
+
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+
+                    color: #fff;
+
+                    p {
+                        margin: 0;
+
+                        font-size: 0.75rem;
+
+                        a {
+                            color: inherit;
+                        }
+                    }
+                }
+            }
+        </style>
+
+        <script>
+            class App {
+                constructor() {
+                    window.onload = (event) => {
+                        this.initialize();
+                    };
+                }
+
+                initialize() {
+                    if(document.querySelector('main')) document.querySelector('main').remove();
+
+                    document.body.innerHTML = `
+                        <main>
+                            <div class="container">
+                                <div class="upload">
+                                    <input type="file" id="file">
+                                    <input type="button" value="Load" onclick="app.imageLoad();">
+                                </div>
+                                <div class="preview"></div>
+                                <div class="results"></div>
+                            </div>
+                        </main>
+                        <footer>
+                            <div class="container">
+                                <p>&copy; 2023 <a href="//github.com/kanaaa224/" target="_blank"><u>kanaaa224</u></a>.</p>
+                            </div>
+                        </footer>
+                    `;
+
+                    return true;
+                }
+
+                outputResults(html = '', selectors = 'main .container .results') {
+                    if(!document.querySelector(selectors)) return false;
+
+                    document.querySelector(selectors).innerHTML = `<p>${html}</p>`;
+
+                    return true;
+                }
+
+                imageDraw(img_src = '', selectors = 'main .container .preview') {
+                    if(!document.querySelector(selectors)) return false;
+
+                    document.querySelector(selectors).innerHTML = `<canvas></canvas>`;
+
+                    let canvas = document.querySelector(`${selectors} canvas`);
+                    let canvasWidth = 400, canvasHeight = 400;
+
+                    canvas.width  = canvasWidth;
+                    canvas.height = canvasHeight;
+
+                    let ctx = canvas.getContext('2d');
+
+                    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+                    const img = new Image();
+
+                    img.onload = () => {
+                        let imgWidth, imgHeight;
+
+                        if(img.width / img.height > canvasWidth / canvasHeight) {
+                            imgWidth  = canvasWidth;
+                            imgHeight = Math.floor(img.height * (canvasWidth / img.width));
+                        } else {
+                            imgWidth  = Math.floor(img.width * (canvasHeight / img.height));
+                            imgHeight = canvasHeight;
+                        }
+
+                        canvas.width  = imgWidth;
+                        canvas.height = imgHeight;
+
+                        ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
+                    };
+
+                    img.src = img_src;
+
+                    return true;
+                }
+
+                imageClassify(img_src = '') {
+                    const img = new Image();
+
+                    img.onload = () => {
+                        let classifier = ml5.imageClassifier('MobileNet');
+
+                        classifier.classify(img, (results, error) => {
+                            if(error) console.error(error);
+                            this.outputResults(`Label: ${results[0].label}<br>Confidence: ${results[0].confidence.toFixed(4)}`);
+                        });
+                    };
+
+                    img.src = img_src;
+
+                    return true;
+                }
+
+                imageLoad(selectors = 'main .container .upload') {
+                    if(!document.querySelector(selectors)) return false;
+
+                    let inputFile = document.querySelector(`${selectors} #file`);
+                    let file = inputFile.files[0];
+
+                    if(!file) return false;
+                    if(!file.type.match('image.*')) return false;
+
+                    const reader = new FileReader();
+
+                    reader.onload = () => {
+                        this.outputResults('処理中...');
+                        this.imageDraw(reader.result);
+                        this.imageClassify(reader.result);
+                    };
+
+                    reader.readAsDataURL(file);
+
+                    return true;
+                }
+            }
+
+            const app = new App();
+        </script>
+    </head>
+    <body>
+    </body>
+</html>
